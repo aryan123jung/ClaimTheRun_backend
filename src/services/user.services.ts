@@ -1,7 +1,10 @@
 import bcryptjs from "bcryptjs";
-import type { CreateUserDto } from "../dtos/user.dtos.ts";
+import type { CreateUserDto, LoginUserDto } from "../dtos/user.dtos.ts";
 import { HttpError } from "../errors/http-error.ts";
 import { UserRepository } from "../repositories/user.repository.ts";
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from "../configs/index.ts";
+
 
 const userRepository = new UserRepository();
 
@@ -32,5 +35,24 @@ export class UserService {
 
     return safeUser;
   }
-}
 
+
+async loginUser(loginData: LoginUserDto) {
+        const user = await userRepository.getUserByEmail(loginData.email);
+        if (!user) {
+            throw new HttpError(404, "User not found");
+        }
+        const validPassword = await bcryptjs.compare(loginData.password, user.password);
+        if (!validPassword) {
+            throw new HttpError(401, "Invalid Credential");
+        }
+        const payload = {
+            id: user._id,
+            email: user.email,
+            // role: user.role,
+        }
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' })
+        return { token, user }
+    }
+
+}
