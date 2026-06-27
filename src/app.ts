@@ -1,7 +1,7 @@
 import express, { Application,Request, Response } from "express";
 import dotenv from 'dotenv';
 import cors from 'cors';
-import { HttpError } from "./errors/http-error.js";
+import { HttpError } from "./errors/http-error.ts";
 
 dotenv.config();
 console.log(process.env.PORT);

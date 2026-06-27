@@ -1,6 +1,6 @@
 import app from "./app.js";
 import { PORT } from "./configs/index.js";
-import { connectDB } from "./database/mongodb.js";
+import { connectDB } from "./database/mongodb.ts";
 import http from "http";
 
 //server part

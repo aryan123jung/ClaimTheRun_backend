@@ -1,5 +1,5 @@
 import z, { email } from "zod";
-import { UserSchema } from "../types/user.type.js";
+import { UserSchema } from "../types/user.type.ts";
 
 
 export const CreateUserDto = UserSchema.pick(
