@@ -1,7 +1,5 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Document,Schema } from "mongoose";
 import {UserType} from "../types/user.type.ts";
-import { email } from "zod";
-import { required } from "zod/mini";
 
 const userMongoSchema: Schema = new Schema(
     {
