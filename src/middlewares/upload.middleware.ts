@@ -59,6 +59,9 @@ function createImageUpload(relativeDir: string) {
 
 export const profileImageUpload = createImageUpload("profile");
 export const postImageUpload = createImageUpload(path.join("posts", "images"));
+export const communityImageUpload = createImageUpload(
+  path.join("communities", "images"),
+);
 
 export function toUploadPath(
   file: Express.Multer.File | undefined,

@@ -13,13 +13,19 @@ export class PostRepository {
   }
 
   async getPersonalFeed() {
-    return PostModel.find()
+    return PostModel.find({ communityId: { $exists: false } })
       .populate("authorId", "fullname username profileUrl")
       .sort({ createdAt: -1 });
   }
 
   async getPostsByAuthorId(authorId: string) {
     return PostModel.find({ authorId })
+      .populate("authorId", "fullname username profileUrl")
+      .sort({ createdAt: -1 });
+  }
+
+  async getPostsByCommunityId(communityId: string) {
+    return PostModel.find({ communityId })
       .populate("authorId", "fullname username profileUrl")
       .sort({ createdAt: -1 });
   }

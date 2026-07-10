@@ -7,6 +7,7 @@ import postRoutes from "./routes/post.routes.ts";
 import friendRoutes from "./routes/friend-request.routes.ts";
 import notificationRoutes from "./routes/notification.routes.ts";
 import messageRoutes from "./routes/message.routes.ts";
+import communityRoutes from "./routes/community.routes.ts";
 import bodyParser from 'body-parser';
 import path from "node:path";
 
@@ -26,6 +27,7 @@ app.use('/api/post', postRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/group', communityRoutes);
 
 
 

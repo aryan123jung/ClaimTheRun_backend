@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IPost extends Document {
   _id: mongoose.Types.ObjectId;
   authorId: mongoose.Types.ObjectId;
+  communityId?: mongoose.Types.ObjectId;
   caption: string;
   imageUrl?: string;
   likes: mongoose.Types.ObjectId[];
@@ -17,6 +18,12 @@ const postMongoSchema = new Schema<IPost>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    communityId: {
+      type: Schema.Types.ObjectId,
+      ref: "Community",
+      required: false,
+      index: true,
     },
     caption: {
       type: String,
