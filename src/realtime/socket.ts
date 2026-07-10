@@ -1,6 +1,6 @@
 import http from "http";
 import jwt from "jsonwebtoken";
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
 import { JWT_SECRET } from "../configs/index.ts";
 
 type AuthSocketPayload = {
@@ -36,7 +36,47 @@ type MessageEventPayload = {
   isReadByOtherUser: boolean;
 };
 
+type GroupMessageEventPayload = {
+  id: string;
+  communityId: string;
+  text: string;
+  createdAt: Date;
+  sender: {
+    id: string;
+    fullname: string;
+    username: string;
+    profileUrl?: string | null;
+  };
+  isMine: boolean;
+};
+
+type GroupVoiceParticipantPayload = {
+  userId: string;
+  name: string;
+  avatarUrl?: string | null;
+};
+
+type GroupVoiceJoinPayload = {
+  communityId: string;
+  userId: string;
+  name: string;
+  avatarUrl?: string | null;
+};
+
+type GroupVoiceSignalPayload = {
+  communityId: string;
+  targetUserId: string;
+  senderUserId: string;
+  senderName: string;
+  senderAvatarUrl?: string | null;
+  data: Record<string, unknown>;
+};
+
 let io: Server | null = null;
+const groupVoiceParticipants = new Map<
+  string,
+  Map<string, GroupVoiceParticipantPayload>
+>();
 
 export function initializeSocket(server: http.Server) {
   io = new Server(server, {
@@ -94,6 +134,82 @@ export function initializeSocket(server: http.Server) {
       }
     });
 
+    socket.on("group:join", (communityId: string) => {
+      if (typeof communityId === "string" && communityId.trim().length > 0) {
+        socket.join(`group:${communityId.trim()}`);
+      }
+    });
+
+    socket.on("group:leave", (communityId: string) => {
+      if (typeof communityId === "string" && communityId.trim().length > 0) {
+        socket.leave(`group:${communityId.trim()}`);
+      }
+    });
+
+    socket.on("group:voice:join", (payload: GroupVoiceJoinPayload) => {
+      if (
+        !payload?.communityId ||
+        !payload?.userId ||
+        payload.userId !== userId
+      ) {
+        return;
+      }
+
+      const communityId = payload.communityId.trim();
+      const roomKey = `group-voice:${communityId}`;
+      socket.join(roomKey);
+
+      const participants =
+        groupVoiceParticipants.get(communityId) ??
+        new Map<string, GroupVoiceParticipantPayload>();
+      const current = {
+        userId,
+        name: payload.name?.toString().trim() || "Runner",
+        avatarUrl: payload.avatarUrl?.toString(),
+      };
+      const existingParticipants = Array.from(participants.values()).filter(
+        (participant) => participant.userId !== userId,
+      );
+
+      participants.set(userId, current);
+      groupVoiceParticipants.set(communityId, participants);
+
+      socket.emit("group:voice:participants", {
+        communityId,
+        participants: existingParticipants,
+      });
+      socket.to(roomKey).emit("group:voice:user-joined", {
+        communityId,
+        participant: current,
+      });
+    });
+
+    socket.on("group:voice:leave", (communityId: string) => {
+      if (typeof communityId !== "string" || communityId.trim().length === 0) {
+        return;
+      }
+      removeParticipantFromVoiceRoom(socket, communityId.trim(), userId);
+    });
+
+    socket.on("group:voice:signal", (payload: GroupVoiceSignalPayload) => {
+      if (
+        !payload?.communityId ||
+        !payload?.targetUserId ||
+        !payload?.senderUserId ||
+        payload.senderUserId !== userId
+      ) {
+        return;
+      }
+
+      io?.to(`user:${payload.targetUserId}`).emit("group:voice:signal", {
+        communityId: payload.communityId,
+        senderUserId: payload.senderUserId,
+        senderName: payload.senderName,
+        senderAvatarUrl: payload.senderAvatarUrl,
+        data: payload.data,
+      });
+    });
+
     socket.on("call:invite", (payload: CallInvitePayload) => {
       if (!payload?.receiverId || payload.receiverId === userId) return;
       io?.to(`user:${payload.receiverId}`).emit("call:incoming", payload);
@@ -127,6 +243,14 @@ export function initializeSocket(server: http.Server) {
       if (!payload?.toUserId) return;
       io?.to(`user:${payload.toUserId}`).emit("call:signal", payload);
     });
+
+    socket.on("disconnect", () => {
+      for (const finalEntry of groupVoiceParticipants.entries()) {
+        if (finalEntry[1].has(userId)) {
+          removeParticipantFromVoiceRoom(socket, finalEntry[0], userId);
+        }
+      }
+    });
   });
 
   return io;
@@ -144,4 +268,44 @@ export function emitMessageNew(payload: MessageEventPayload) {
     isMine: false,
     isReadByOtherUser: false,
   });
+}
+
+export async function emitGroupMessageNew(payload: GroupMessageEventPayload) {
+  if (!io) return;
+  const sockets = await io.in(`group:${payload.communityId}`).fetchSockets();
+  for (const socket of sockets) {
+    const socketUserId = socket.data.user?.id?.toString?.() ?? "";
+    socket.emit("group:message:new", {
+      ...payload,
+      isMine: socketUserId === payload.sender.id,
+    });
+  }
+}
+
+function removeParticipantFromVoiceRoom(
+  socket: Socket,
+  communityId: string,
+  userId: string,
+) {
+  socket.leave(`group-voice:${communityId}`);
+  const participants = groupVoiceParticipants.get(communityId);
+  if (participants == null) {
+    return;
+  }
+
+  const removedParticipant = participants.get(userId);
+  participants.delete(userId);
+
+  if (participants.size === 0) {
+    groupVoiceParticipants.delete(communityId);
+  } else {
+    groupVoiceParticipants.set(communityId, participants);
+  }
+
+  if (removedParticipant != null) {
+    io?.to(`group-voice:${communityId}`).emit("group:voice:user-left", {
+      communityId,
+      userId,
+    });
+  }
 }

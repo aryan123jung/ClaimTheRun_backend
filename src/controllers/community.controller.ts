@@ -2,8 +2,10 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware.ts";
 import { toUploadPath } from "../middlewares/upload.middleware.ts";
 import { CommunityService } from "../services/community.services.ts";
+import { GroupMessageService } from "../services/group-message.services.ts";
 
 const communityService = new CommunityService();
+const groupMessageService = new GroupMessageService();
 
 function getParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value ?? "";
@@ -117,6 +119,42 @@ export class CommunityController {
         req.user!.id,
       );
       return res.status(200).json({ success: true, data });
+    } catch (error: Error | any) {
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "Internal Server Error",
+      });
+    }
+  }
+
+  async getCommunityMessages(req: AuthenticatedRequest, res: Response) {
+    try {
+      const data = await groupMessageService.getMessages(
+        req.user!.id,
+        getParam(req.params.communityId),
+      );
+      return res.status(200).json({ success: true, data });
+    } catch (error: Error | any) {
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "Internal Server Error",
+      });
+    }
+  }
+
+  async sendCommunityMessage(req: AuthenticatedRequest, res: Response) {
+    try {
+      const text = typeof req.body?.text === "string" ? req.body.text : "";
+      const data = await groupMessageService.sendMessage(
+        req.user!.id,
+        getParam(req.params.communityId),
+        text,
+      );
+      return res.status(201).json({
+        success: true,
+        message: "Group message sent successfully",
+        data,
+      });
     } catch (error: Error | any) {
       return res.status(error.statusCode || 500).json({
         success: false,
