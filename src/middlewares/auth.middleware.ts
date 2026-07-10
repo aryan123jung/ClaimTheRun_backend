@@ -7,6 +7,7 @@ export interface AuthenticatedRequest extends Request {
     id: string;
     email: string;
   };
+  file?: Express.Multer.File;
 }
 
 export function requireAuth(

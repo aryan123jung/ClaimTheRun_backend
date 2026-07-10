@@ -8,6 +8,7 @@ import friendRoutes from "./routes/friend-request.routes.ts";
 import notificationRoutes from "./routes/notification.routes.ts";
 import messageRoutes from "./routes/message.routes.ts";
 import bodyParser from 'body-parser';
+import path from "node:path";
 
 dotenv.config();
 console.log(process.env.PORT);
@@ -19,6 +20,7 @@ app.use(cors());
 
 app.use(bodyParser.json({ limit: requestBodyLimit }));
 app.use(bodyParser.urlencoded({ extended: true, limit: requestBodyLimit }));
+app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 app.use('/api/auth', authRoutes);
 app.use('/api/post', postRoutes);
 app.use('/api/friends', friendRoutes);
@@ -32,6 +34,12 @@ app.use((err: Error, req: Request, res: Response, next: Function) => {
         return res.status(413).json({
             success: false,
             message: 'Request body exceeds the 10 MB upload limit',
+        });
+    }
+    if ((err as Error & { code?: string }).code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({
+            success: false,
+            message: 'Uploaded file exceeds the 10 MB upload limit',
         });
     }
     if (err instanceof HttpError) {

@@ -2,6 +2,7 @@ import z from "zod";
 import { Response } from "express";
 import { CreatePostDto } from "../dtos/post.dtos.ts";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware.ts";
+import { toUploadPath } from "../middlewares/upload.middleware.ts";
 import { PostService } from "../services/post.services.ts";
 
 const postService = new PostService();
@@ -9,7 +10,11 @@ const postService = new PostService();
 export class PostController {
   async createPost(req: AuthenticatedRequest, res: Response) {
     try {
-      const parsedData = CreatePostDto.safeParse(req.body);
+      const imageUrl = toUploadPath(req.file, "posts/images");
+      const parsedData = CreatePostDto.safeParse({
+        ...req.body,
+        ...(imageUrl ? { imageUrl } : {}),
+      });
       if (!parsedData.success) {
         return res.status(400).json({
           success: false,

@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { CreateUserDto, LoginUserDto } from "../dtos/user.dtos.ts";
 import { UpdateUserDto } from "../dtos/user.dtos.ts";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware.ts";
+import { toUploadPath } from "../middlewares/upload.middleware.ts";
 import { UserService } from "../services/user.services.ts";
 
 let userService = new UserService();
@@ -67,7 +68,11 @@ async loginUser(req: Request, res: Response) {
             if (!req.user?.id) {
                 return res.status(401).json({ success: false, message: "Unauthorized" });
             }
-            const parsedData = UpdateUserDto.safeParse(req.body);
+            const profileUrl = toUploadPath(req.file, "profile");
+            const parsedData = UpdateUserDto.safeParse({
+                ...req.body,
+                ...(profileUrl ? { profileUrl } : {}),
+            });
             if (!parsedData.success) {
                 return res.status(400).json(
                     { success: false, message: z.prettifyError(parsedData.error) }

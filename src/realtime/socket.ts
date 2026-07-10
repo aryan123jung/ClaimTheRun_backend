@@ -84,7 +84,13 @@ export function initializeSocket(server: http.Server) {
 export function emitMessageNew(payload: MessageEventPayload) {
   if (!io) return;
 
-  io.to(`user:${payload.senderId}`).emit("message:new", payload);
-  io.to(`user:${payload.receiverId}`).emit("message:new", payload);
-  io.to(`conversation:${payload.conversationId}`).emit("message:new", payload);
+  io.to(`user:${payload.senderId}`).emit("message:new", {
+    ...payload,
+    isMine: true,
+  });
+  io.to(`user:${payload.receiverId}`).emit("message:new", {
+    ...payload,
+    isMine: false,
+    isReadByOtherUser: false,
+  });
 }
