@@ -7,6 +7,7 @@ const userMongoSchema: Schema = new Schema(
         email: {type:String, required: true},
         username: {type:String, required: true,unique: true},
         password: {type: String, required: true},
+        bio: {type: String, required: false, default: ""},
         profileUrl: {type: String, required: false}
     },
     {

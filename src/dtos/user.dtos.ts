@@ -8,6 +8,7 @@ export const CreateUserDto = UserSchema.pick(
         username: true,
         email: true,
         password: true,
+        bio: true,
         profileUrl: true,
     }
 )
@@ -24,9 +25,12 @@ export type LoginUserDto = z.infer<typeof LoginUserDto>;
 
 
 
-export const UpdateUserDto = UserSchema.partial();
+export const UpdateUserDto = z.object({
+    fullname: z.string().min(1).optional(),
+    bio: z.string().max(160).optional(),
+    profileUrl: z.string().optional(),
+});
 export type UpdateUserDto = z.infer<typeof UpdateUserDto>;
-
 
 
 

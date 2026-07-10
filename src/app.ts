@@ -4,6 +4,8 @@ import cors from 'cors';
 import { HttpError } from "./errors/http-error.ts";
 import authRoutes from "./routes/auth.routes.ts";
 import postRoutes from "./routes/post.routes.ts";
+import friendRoutes from "./routes/friend-request.routes.ts";
+import notificationRoutes from "./routes/notification.routes.ts";
 import bodyParser from 'body-parser';
 
 dotenv.config();
@@ -18,6 +20,8 @@ app.use(bodyParser.json({ limit: requestBodyLimit }));
 app.use(bodyParser.urlencoded({ extended: true, limit: requestBodyLimit }));
 app.use('/api/auth', authRoutes);
 app.use('/api/post', postRoutes);
+app.use('/api/friends', friendRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 
 

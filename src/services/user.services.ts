@@ -1,5 +1,5 @@
 import bcryptjs from "bcryptjs";
-import type { CreateUserDto, LoginUserDto } from "../dtos/user.dtos.ts";
+import type { CreateUserDto, LoginUserDto, UpdateUserDto } from "../dtos/user.dtos.ts";
 import { HttpError } from "../errors/http-error.ts";
 import { UserRepository } from "../repositories/user.repository.ts";
 import jwt from 'jsonwebtoken';
@@ -54,5 +54,21 @@ async loginUser(loginData: LoginUserDto) {
         const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' })
         return { token, user }
     }
+
+  async getCurrentUser(userId: string) {
+    const user = await userRepository.getUserById(userId);
+    if (!user) {
+      throw new HttpError(404, "User not found");
+    }
+    return user;
+  }
+
+  async updateCurrentUser(userId: string, userData: UpdateUserDto) {
+    const user = await userRepository.updateUserById(userId, userData);
+    if (!user) {
+      throw new HttpError(404, "User not found");
+    }
+    return user;
+  }
 
 }

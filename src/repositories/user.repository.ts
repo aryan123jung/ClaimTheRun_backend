@@ -7,6 +7,7 @@ export interface IUserRepository{
 
     createUser(userData: Partial<IUser>): Promise<IUser>;
     getUserById(userId: string):Promise <IUser | null>;
+    updateUserById(userId: string, userData: Partial<IUser>): Promise<IUser | null>;
     // getAllusers(): Promise<IUser[]>;
     getAllusers(
         page: number, size: number, search?: string
@@ -14,8 +15,20 @@ export interface IUserRepository{
 }
 
 export class UserRepository implements IUserRepository {
-    getAllusers(page: number, size: number, search?: string): Promise<{ users: IUser[]; total: number; }> {
-        throw new Error("Method not implemented.");
+    async getAllusers(page: number, size: number, search?: string): Promise<{ users: IUser[]; total: number; }> {
+        const query: QueryFilter<IUser> = {};
+        if (search?.trim()) {
+            query.$or = [
+                { fullname: { $regex: search.trim(), $options: "i" } },
+                { username: { $regex: search.trim(), $options: "i" } },
+            ];
+        }
+        const skip = (page - 1) * size;
+        const [users, total] = await Promise.all([
+            UserModel.find(query).select("-password").sort({ fullname: 1 }).skip(skip).limit(size),
+            UserModel.countDocuments(query),
+        ]);
+        return { users, total };
     }
     async createUser(userData: Partial<IUser>): Promise<IUser> {
         const user = new UserModel(userData);
@@ -35,6 +48,15 @@ export class UserRepository implements IUserRepository {
 
     async getUserById(userId: string): Promise<IUser | null> {
         const user = await UserModel.findById(userId).select("-password");
+        return user;
+    }
+
+    async updateUserById(userId: string, userData: Partial<IUser>): Promise<IUser | null> {
+        const user = await UserModel.findByIdAndUpdate(
+            userId,
+            userData,
+            { new: true }
+        ).select("-password");
         return user;
     }
 }
