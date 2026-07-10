@@ -1,6 +1,9 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export type NotificationKind = "FRIEND_REQUEST_SENT" | "FRIEND_REQUEST_ACCEPTED";
+export type NotificationKind =
+  | "FRIEND_REQUEST_SENT"
+  | "FRIEND_REQUEST_ACCEPTED"
+  | "MESSAGE_RECEIVED";
 
 export interface INotification extends Document {
   _id: mongoose.Types.ObjectId;
@@ -34,7 +37,11 @@ const notificationSchema = new Schema<INotification>(
     },
     type: {
       type: String,
-      enum: ["FRIEND_REQUEST_SENT", "FRIEND_REQUEST_ACCEPTED"],
+      enum: [
+        "FRIEND_REQUEST_SENT",
+        "FRIEND_REQUEST_ACCEPTED",
+        "MESSAGE_RECEIVED",
+      ],
       required: true,
     },
     title: {
