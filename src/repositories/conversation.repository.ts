@@ -18,6 +18,7 @@ export class ConversationRepository {
       participants: [userA, userB],
       participantsKey: this.buildParticipantsKey(userA, userB),
       lastMessage: null,
+      lastMessageSenderId: null,
       lastMessageAt: null,
     });
     await conversation.save();
@@ -43,9 +44,15 @@ export class ConversationRepository {
       .sort({ lastMessageAt: -1, updatedAt: -1 });
   }
 
-  async updateLastMessage(conversationId: string, text: string, createdAt: Date) {
+  async updateLastMessage(
+    conversationId: string,
+    senderId: string,
+    text: string,
+    createdAt: Date,
+  ) {
     await ConversationModel.findByIdAndUpdate(conversationId, {
       lastMessage: text,
+      lastMessageSenderId: senderId,
       lastMessageAt: createdAt,
       updatedAt: createdAt,
     });

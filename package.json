@@ -4,13 +4,13 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-  "dev": "nodemon --exec tsx src/index.ts",
-  "test": "jest --verbose --detectOpenHandles",
-  "test:unit": "SKIP_DB_CONNECT=true jest --verbose --detectOpenHandles --runInBand src/__tests__/unit",
-  "test:integration": "jest --verbose --detectOpenHandles --runInBand src/__tests__/integration",
-  "build": "tsc",
-  "start": "node dist/index.js"
-},
+    "dev": "nodemon --exec tsx src/index.ts",
+    "test": "jest --verbose --detectOpenHandles",
+    "test:unit": "SKIP_DB_CONNECT=true jest --verbose --detectOpenHandles --runInBand src/__tests__/unit",
+    "test:integration": "jest --verbose --detectOpenHandles --runInBand src/__tests__/integration",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -22,6 +22,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.0",
+    "socket.io": "^4.8.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {

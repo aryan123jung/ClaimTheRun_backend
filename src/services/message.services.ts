@@ -3,6 +3,7 @@ import { ConversationRepository } from "../repositories/conversation.repository.
 import { FriendRequestRepository } from "../repositories/friend-request.repository.ts";
 import { MessageRepository } from "../repositories/message.repository.ts";
 import { UserRepository } from "../repositories/user.repository.ts";
+import { emitMessageNew } from "../realtime/socket.ts";
 
 const conversationRepository = new ConversationRepository();
 const messageRepository = new MessageRepository();
@@ -68,11 +69,14 @@ export class MessageService {
 
     await conversationRepository.updateLastMessage(
       conversationId,
+      currentUserId,
       trimmed,
       message.createdAt,
     );
 
-    return this.serializeMessage(message, currentUserId);
+    const serialized = this.serializeMessage(message, currentUserId);
+    emitMessageNew(serialized);
+    return serialized;
   }
 
   async markConversationRead(currentUserId: string, conversationId: string) {
@@ -150,6 +154,7 @@ export class MessageService {
       lastMessage: conversation.lastMessage
         ? {
             text: conversation.lastMessage,
+            senderId: conversation.lastMessageSenderId?.toString?.() ?? "",
             createdAt: conversation.lastMessageAt ?? conversation.updatedAt,
           }
         : null,
