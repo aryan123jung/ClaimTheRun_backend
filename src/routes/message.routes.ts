@@ -13,6 +13,10 @@ router.post(
 );
 router.get("/:conversationId", requireAuth, controller.getMessages);
 router.post("/:conversationId", requireAuth, controller.sendMessage);
-router.post("/:conversationId/read", requireAuth, controller.markConversationRead);
+router.patch(
+  "/:conversationId/read",
+  requireAuth,
+  controller.markConversationRead,
+);
 
 export default router;

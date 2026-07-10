@@ -17,6 +17,8 @@ export class ConversationRepository {
     const conversation = new ConversationModel({
       participants: [userA, userB],
       participantsKey: this.buildParticipantsKey(userA, userB),
+      lastMessage: null,
+      lastMessageAt: null,
     });
     await conversation.save();
     return this.findById(conversation._id.toString());
@@ -38,12 +40,14 @@ export class ConversationRepository {
   async listForUser(userId: string) {
     return ConversationModel.find({ participants: userId })
       .populate("participants", "fullname username profileUrl")
-      .sort({ updatedAt: -1 });
+      .sort({ lastMessageAt: -1, updatedAt: -1 });
   }
 
-  async touchConversation(conversationId: string) {
+  async updateLastMessage(conversationId: string, text: string, createdAt: Date) {
     await ConversationModel.findByIdAndUpdate(conversationId, {
-      updatedAt: new Date(),
+      lastMessage: text,
+      lastMessageAt: createdAt,
+      updatedAt: createdAt,
     });
   }
 }

@@ -4,6 +4,8 @@ export interface IConversation extends Document {
   _id: mongoose.Types.ObjectId;
   participants: mongoose.Types.ObjectId[];
   participantsKey: string;
+  lastMessage?: string | null;
+  lastMessageAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,6 +24,17 @@ const conversationSchema = new Schema<IConversation>(
       required: true,
       unique: true,
       trim: true,
+    },
+    lastMessage: {
+      type: String,
+      required: false,
+      trim: true,
+      default: null,
+    },
+    lastMessageAt: {
+      type: Date,
+      required: false,
+      default: null,
     },
   },
   {

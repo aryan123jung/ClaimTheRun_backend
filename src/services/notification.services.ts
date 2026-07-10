@@ -29,21 +29,6 @@ export class NotificationService {
     });
   }
 
-  async createMessageNotification(
-    actorName: string,
-    actorId: string,
-    recipientId: string,
-    text: string,
-  ) {
-    return notificationRepository.createNotification({
-      userId: recipientId,
-      actorId,
-      type: "MESSAGE_RECEIVED",
-      title: "New Message",
-      message: `${actorName}: ${text.length > 60 ? "${text.substring(0, 57)}..." : text}`,
-    });
-  }
-
   async getNotifications(userId: string) {
     const notifications = await notificationRepository.listForUser(userId);
     return notifications.map((item) => this.serializeNotification(item));

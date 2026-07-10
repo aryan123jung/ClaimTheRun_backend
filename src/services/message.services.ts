@@ -3,13 +3,11 @@ import { ConversationRepository } from "../repositories/conversation.repository.
 import { FriendRequestRepository } from "../repositories/friend-request.repository.ts";
 import { MessageRepository } from "../repositories/message.repository.ts";
 import { UserRepository } from "../repositories/user.repository.ts";
-import { NotificationService } from "./notification.services.ts";
 
 const conversationRepository = new ConversationRepository();
 const messageRepository = new MessageRepository();
 const friendRequestRepository = new FriendRequestRepository();
 const userRepository = new UserRepository();
-const notificationService = new NotificationService();
 
 export class MessageService {
   async getConversations(currentUserId: string) {
@@ -64,17 +62,15 @@ export class MessageService {
       receiverId: otherUserId,
       text: trimmed,
     });
-    await conversationRepository.touchConversation(conversationId);
-
-    const sender = await userRepository.getUserById(currentUserId);
-    if (sender) {
-      await notificationService.createMessageNotification(
-        sender.fullname,
-        currentUserId,
-        otherUserId,
-        trimmed,
-      );
+    if (!message) {
+      throw new HttpError(500, "Failed to send message");
     }
+
+    await conversationRepository.updateLastMessage(
+      conversationId,
+      trimmed,
+      message.createdAt,
+    );
 
     return this.serializeMessage(message, currentUserId);
   }
@@ -135,13 +131,14 @@ export class MessageService {
     const otherUser = conversation.participants.find(
       (participant: any) => participant._id.toString() !== currentUserId,
     );
-    const [lastMessage, unreadCount] = await Promise.all([
-      messageRepository.getLatestMessage(conversation._id.toString()),
-      messageRepository.countUnread(conversation._id.toString(), currentUserId),
-    ]);
+    const unreadCount = await messageRepository.countUnread(
+      conversation._id.toString(),
+      currentUserId,
+    );
 
     return {
       id: conversation._id.toString(),
+      lastMessageAt: conversation.lastMessageAt ?? conversation.updatedAt,
       updatedAt: conversation.updatedAt,
       unreadCount,
       otherUser: {
@@ -150,12 +147,10 @@ export class MessageService {
         username: otherUser?.username ?? "",
         profileUrl: otherUser?.profileUrl ?? null,
       },
-      lastMessage: lastMessage
+      lastMessage: conversation.lastMessage
         ? {
-            id: lastMessage._id.toString(),
-            text: lastMessage.text,
-            senderId: lastMessage.senderId?._id?.toString?.() ?? "",
-            createdAt: lastMessage.createdAt,
+            text: conversation.lastMessage,
+            createdAt: conversation.lastMessageAt ?? conversation.updatedAt,
           }
         : null,
     };
