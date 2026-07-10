@@ -8,6 +8,23 @@ type AuthSocketPayload = {
   email: string;
 };
 
+type CallInvitePayload = {
+  callId: string;
+  callerId: string;
+  callerName: string;
+  callerAvatarUrl?: string | null;
+  receiverId: string;
+  isVideo: boolean;
+  createdAt: string;
+};
+
+type CallSignalPayload = {
+  callId: string;
+  fromUserId: string;
+  toUserId: string;
+  data: Record<string, unknown>;
+};
+
 type MessageEventPayload = {
   id: string;
   conversationId: string;
@@ -75,6 +92,40 @@ export function initializeSocket(server: http.Server) {
       ) {
         socket.leave(`conversation:${conversationId.trim()}`);
       }
+    });
+
+    socket.on("call:invite", (payload: CallInvitePayload) => {
+      if (!payload?.receiverId || payload.receiverId === userId) return;
+      io?.to(`user:${payload.receiverId}`).emit("call:incoming", payload);
+    });
+
+    socket.on("call:accept", (payload: { callId: string; callerId: string }) => {
+      if (!payload?.callerId) return;
+      io?.to(`user:${payload.callerId}`).emit("call:accepted", {
+        callId: payload.callId,
+        byUserId: userId,
+      });
+    });
+
+    socket.on("call:decline", (payload: { callId: string; callerId: string }) => {
+      if (!payload?.callerId) return;
+      io?.to(`user:${payload.callerId}`).emit("call:declined", {
+        callId: payload.callId,
+        byUserId: userId,
+      });
+    });
+
+    socket.on("call:end", (payload: { callId: string; otherUserId: string }) => {
+      if (!payload?.otherUserId) return;
+      io?.to(`user:${payload.otherUserId}`).emit("call:ended", {
+        callId: payload.callId,
+        byUserId: userId,
+      });
+    });
+
+    socket.on("call:signal", (payload: CallSignalPayload) => {
+      if (!payload?.toUserId) return;
+      io?.to(`user:${payload.toUserId}`).emit("call:signal", payload);
     });
   });
 
