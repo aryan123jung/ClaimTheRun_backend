@@ -12,7 +12,9 @@ const userRepository = new UserRepository();
 
 export class MessageService {
   async getConversations(currentUserId: string) {
-    const conversations = await conversationRepository.listForUser(currentUserId);
+    const conversations = await conversationRepository.listDetailedForUser(
+      currentUserId,
+    );
     return Promise.all(
       conversations.map((conversation) =>
         this.serializeConversation(conversation, currentUserId),
@@ -91,7 +93,7 @@ export class MessageService {
     }
 
     const isParticipant = conversation.participants.some(
-      (participant: any) => participant._id.toString() === currentUserId,
+      (participant: any) => participant.toString() === currentUserId,
     );
 
     if (!isParticipant) {
@@ -123,12 +125,12 @@ export class MessageService {
 
   private getOtherParticipantId(conversation: any, currentUserId: string) {
     const other = conversation.participants.find(
-      (participant: any) => participant._id.toString() !== currentUserId,
+      (participant: any) => participant.toString() !== currentUserId,
     );
-    if (!other?._id) {
+    if (!other) {
       throw new HttpError(500, "Conversation participant not found");
     }
-    return other._id.toString();
+    return other.toString();
   }
 
   private async serializeConversation(conversation: any, currentUserId: string) {
@@ -162,8 +164,8 @@ export class MessageService {
   }
 
   private serializeMessage(message: any, currentUserId: string) {
-    const senderId = message.senderId?._id?.toString?.() ?? "";
-    const receiverId = message.receiverId?._id?.toString?.() ?? "";
+    const senderId = message.senderId?.toString?.() ?? "";
+    const receiverId = message.receiverId?.toString?.() ?? "";
     const readBy = Array.isArray(message.readBy)
       ? message.readBy.map((item: any) => item.toString())
       : [];

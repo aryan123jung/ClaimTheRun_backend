@@ -5,7 +5,8 @@ export class MessageRepository {
   async listForConversation(conversationId: string) {
     return MessageModel.find({ conversationId })
       .sort({ createdAt: 1 })
-      .populate("senderId receiverId", "fullname username profileUrl");
+      .select("_id conversationId senderId receiverId text readBy createdAt")
+      .lean();
   }
 
   async createMessage(params: {
@@ -26,16 +27,9 @@ export class MessageRepository {
   }
 
   async getById(messageId: string) {
-    return MessageModel.findById(messageId).populate(
-      "senderId receiverId",
-      "fullname username profileUrl",
-    );
-  }
-
-  async getLatestMessage(conversationId: string) {
-    return MessageModel.findOne({ conversationId })
-      .sort({ createdAt: -1 })
-      .populate("senderId receiverId", "fullname username profileUrl");
+    return MessageModel.findById(messageId)
+      .select("_id conversationId senderId receiverId text readBy createdAt")
+      .lean();
   }
 
   async countUnread(conversationId: string, userId: string) {

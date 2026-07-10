@@ -50,7 +50,6 @@ const conversationSchema = new Schema<IConversation>(
 );
 
 conversationSchema.index({ participants: 1 });
-conversationSchema.index({ participantsKey: 1 }, { unique: true });
 
 export const ConversationModel = mongoose.model<IConversation>(
   "Conversation",

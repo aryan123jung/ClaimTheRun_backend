@@ -13,6 +13,11 @@ export class ConversationRepository {
     );
   }
 
+  async findByParticipantsBasic(userA: string, userB: string) {
+    const participantsKey = this.buildParticipantsKey(userA, userB);
+    return ConversationModel.findOne({ participantsKey }).lean();
+  }
+
   async createConversation(userA: string, userB: string) {
     const conversation = new ConversationModel({
       participants: [userA, userB],
@@ -32,6 +37,10 @@ export class ConversationRepository {
   }
 
   async findById(conversationId: string) {
+    return ConversationModel.findById(conversationId).lean();
+  }
+
+  async findDetailedById(conversationId: string) {
     return ConversationModel.findById(conversationId).populate(
       "participants",
       "fullname username profileUrl",
@@ -39,6 +48,14 @@ export class ConversationRepository {
   }
 
   async listForUser(userId: string) {
+    return ConversationModel.find({ participants: userId })
+      .select(
+        "_id participants participantsKey lastMessage lastMessageSenderId lastMessageAt updatedAt createdAt",
+      )
+      .lean();
+  }
+
+  async listDetailedForUser(userId: string) {
     return ConversationModel.find({ participants: userId })
       .populate("participants", "fullname username profileUrl")
       .sort({ lastMessageAt: -1, updatedAt: -1 });
