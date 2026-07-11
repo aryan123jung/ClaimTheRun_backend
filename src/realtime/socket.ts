@@ -72,14 +72,47 @@ type GroupVoiceSignalPayload = {
   data: Record<string, unknown>;
 };
 
+type GroupRunParticipantPayload = {
+  userId: string;
+  name: string;
+  avatarUrl?: string | null;
+  latitude: number;
+  longitude: number;
+  updatedAt: string;
+};
+
+type GroupRunJoinPayload = {
+  communityId: string;
+  userId: string;
+  name: string;
+  avatarUrl?: string | null;
+  latitude: number;
+  longitude: number;
+};
+
+type GroupRunLocationPayload = {
+  communityId: string;
+  userId: string;
+  latitude: number;
+  longitude: number;
+};
+
 let io: Server | null = null;
 const groupVoiceParticipants = new Map<
   string,
   Map<string, GroupVoiceParticipantPayload>
 >();
+const groupRunParticipants = new Map<
+  string,
+  Map<string, GroupRunParticipantPayload>
+>();
 
 function logGroupVoice(message: string) {
   console.log(`[GroupVoice] ${message}`);
+}
+
+function logGroupRun(message: string) {
+  console.log(`[GroupRun] ${message}`);
 }
 
 export function initializeSocket(server: http.Server) {
@@ -148,6 +181,100 @@ export function initializeSocket(server: http.Server) {
       if (typeof communityId === "string" && communityId.trim().length > 0) {
         socket.leave(`group:${communityId.trim()}`);
       }
+    });
+
+    socket.on("group:run:join", (payload: GroupRunJoinPayload) => {
+      if (
+        !payload?.communityId ||
+        !payload?.userId ||
+        payload.userId !== userId ||
+        typeof payload.latitude !== "number" ||
+        typeof payload.longitude !== "number"
+      ) {
+        logGroupRun(
+          `Rejected join for socket user=${userId} payloadUser=${payload?.userId} community=${payload?.communityId}`,
+        );
+        return;
+      }
+
+      const communityId = payload.communityId.trim();
+      const roomKey = `group-run:${communityId}`;
+      socket.join(roomKey);
+
+      const participants =
+        groupRunParticipants.get(communityId) ??
+        new Map<string, GroupRunParticipantPayload>();
+      const current: GroupRunParticipantPayload = {
+        userId,
+        name: payload.name?.toString().trim() || "Runner",
+        avatarUrl: payload.avatarUrl?.toString(),
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+        updatedAt: new Date().toISOString(),
+      };
+      const existingParticipants = Array.from(participants.values()).filter(
+        (participant) => participant.userId !== userId,
+      );
+
+      participants.set(userId, current);
+      groupRunParticipants.set(communityId, participants);
+      logGroupRun(
+        `Join community=${communityId} user=${userId} participants=[${Array.from(
+          participants.keys(),
+        ).join(", ")}]`,
+      );
+
+      socket.to(roomKey).emit("group:run:user-joined", {
+        communityId,
+        participant: current,
+      });
+      socket.emit("group:run:participants", {
+        communityId,
+        participants: existingParticipants,
+      });
+    });
+
+    socket.on("group:run:update", (payload: GroupRunLocationPayload) => {
+      if (
+        !payload?.communityId ||
+        !payload?.userId ||
+        payload.userId !== userId ||
+        typeof payload.latitude !== "number" ||
+        typeof payload.longitude !== "number"
+      ) {
+        return;
+      }
+
+      const communityId = payload.communityId.trim();
+      const participants = groupRunParticipants.get(communityId);
+      if (!participants) {
+        return;
+      }
+
+      const existing = participants.get(userId);
+      if (!existing) {
+        return;
+      }
+
+      const updated: GroupRunParticipantPayload = {
+        ...existing,
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+        updatedAt: new Date().toISOString(),
+      };
+      participants.set(userId, updated);
+      groupRunParticipants.set(communityId, participants);
+      socket.to(`group-run:${communityId}`).emit("group:run:user-updated", {
+        communityId,
+        participant: updated,
+      });
+    });
+
+    socket.on("group:run:leave", (communityId: string) => {
+      if (typeof communityId !== "string" || communityId.trim().length === 0) {
+        return;
+      }
+      removeParticipantFromRunRoom(socket, communityId.trim(), userId);
     });
 
     socket.on("group:voice:join", (payload: GroupVoiceJoinPayload) => {
@@ -265,6 +392,9 @@ export function initializeSocket(server: http.Server) {
     });
 
     socket.on("disconnect", () => {
+      for (const [communityId] of groupRunParticipants.entries()) {
+        removeParticipantFromRunRoom(socket, communityId, userId);
+      }
       for (const finalEntry of groupVoiceParticipants.entries()) {
         if (finalEntry[1].has(userId)) {
           removeParticipantFromVoiceRoom(socket, finalEntry[0], userId);
@@ -332,10 +462,38 @@ function removeParticipantFromVoiceRoom(
       communityId,
       userId,
     });
-    void emitGroupVoiceParticipantsSnapshot(communityId);
   }
 }
 
+function removeParticipantFromRunRoom(
+  socket: Socket,
+  communityId: string,
+  userId: string,
+) {
+  const participants = groupRunParticipants.get(communityId);
+  if (!participants?.has(userId)) {
+    socket.leave(`group-run:${communityId}`);
+    return;
+  }
+
+  participants.delete(userId);
+  if (participants.size === 0) {
+    groupRunParticipants.delete(communityId);
+  } else {
+    groupRunParticipants.set(communityId, participants);
+  }
+
+  socket.leave(`group-run:${communityId}`);
+  logGroupRun(
+    `Leave community=${communityId} user=${userId} remaining=[${Array.from(
+      participants?.keys?.() ?? [],
+    ).join(", ")}]`,
+  );
+  io?.to(`group-run:${communityId}`).emit("group:run:user-left", {
+    communityId,
+    userId,
+  });
+}
 async function emitGroupVoiceParticipantsSnapshot(communityId: string) {
   if (!io) return;
 
