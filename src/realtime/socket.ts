@@ -78,6 +78,10 @@ const groupVoiceParticipants = new Map<
   Map<string, GroupVoiceParticipantPayload>
 >();
 
+function logGroupVoice(message: string) {
+  console.log(`[GroupVoice] ${message}`);
+}
+
 export function initializeSocket(server: http.Server) {
   io = new Server(server, {
     cors: {
@@ -152,6 +156,9 @@ export function initializeSocket(server: http.Server) {
         !payload?.userId ||
         payload.userId !== userId
       ) {
+        logGroupVoice(
+          `Rejected join for socket user=${userId} payloadUser=${payload?.userId} community=${payload?.communityId}`,
+        );
         return;
       }
 
@@ -173,15 +180,21 @@ export function initializeSocket(server: http.Server) {
 
       participants.set(userId, current);
       groupVoiceParticipants.set(communityId, participants);
+      logGroupVoice(
+        `Join community=${communityId} user=${userId} participants=[${Array.from(
+          participants.keys(),
+        ).join(", ")}]`,
+      );
 
-      socket.emit("group:voice:participants", {
-        communityId,
-        participants: existingParticipants,
-      });
       socket.to(roomKey).emit("group:voice:user-joined", {
         communityId,
         participant: current,
       });
+      socket.emit("group:voice:participants", {
+        communityId,
+        participants: existingParticipants,
+      });
+      void emitGroupVoiceParticipantsSnapshot(communityId);
     });
 
     socket.on("group:voice:leave", (communityId: string) => {
@@ -198,8 +211,15 @@ export function initializeSocket(server: http.Server) {
         !payload?.senderUserId ||
         payload.senderUserId !== userId
       ) {
+        logGroupVoice(
+          `Rejected signal from user=${userId} sender=${payload?.senderUserId} target=${payload?.targetUserId} community=${payload?.communityId}`,
+        );
         return;
       }
+
+      logGroupVoice(
+        `Signal community=${payload.communityId} from=${payload.senderUserId} to=${payload.targetUserId} type=${payload.data?.type?.toString?.() ?? "unknown"}`,
+      );
 
       io?.to(`user:${payload.targetUserId}`).emit("group:voice:signal", {
         communityId: payload.communityId,
@@ -295,6 +315,11 @@ function removeParticipantFromVoiceRoom(
 
   const removedParticipant = participants.get(userId);
   participants.delete(userId);
+  logGroupVoice(
+    `Leave community=${communityId} user=${userId} remaining=[${Array.from(
+      participants.keys(),
+    ).join(", ")}]`,
+  );
 
   if (participants.size === 0) {
     groupVoiceParticipants.delete(communityId);
@@ -306,6 +331,39 @@ function removeParticipantFromVoiceRoom(
     io?.to(`group-voice:${communityId}`).emit("group:voice:user-left", {
       communityId,
       userId,
+    });
+    void emitGroupVoiceParticipantsSnapshot(communityId);
+  }
+}
+
+async function emitGroupVoiceParticipantsSnapshot(communityId: string) {
+  if (!io) return;
+
+  const participants = groupVoiceParticipants.get(communityId);
+  if (participants == null) {
+    logGroupVoice(`Snapshot skipped community=${communityId} no participants`);
+    return;
+  }
+
+  const sockets = await io.in(`group-voice:${communityId}`).fetchSockets();
+  logGroupVoice(
+    `Snapshot community=${communityId} roomSockets=${sockets.length} participants=[${Array.from(
+      participants.keys(),
+    ).join(", ")}]`,
+  );
+  for (const socket of sockets) {
+    const socketUserId = socket.data.user?.id?.toString?.() ?? "";
+    const otherParticipants = Array.from(participants.values()).filter(
+      (participant) => participant.userId !== socketUserId,
+    );
+    logGroupVoice(
+      `Snapshot -> socketUser=${socketUserId} sees=[${otherParticipants
+        .map((participant) => participant.userId)
+        .join(", ")}]`,
+    );
+    socket.emit("group:voice:participants", {
+      communityId,
+      participants: otherParticipants,
     });
   }
 }
