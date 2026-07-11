@@ -6,6 +6,7 @@ const RunPointSchema = z.object({
 });
 
 export const CreateRunDto = z.object({
+  title: z.string().trim().min(1).max(80).optional(),
   routePoints: z.array(RunPointSchema).default([]),
   territoryPoints: z.array(RunPointSchema).default([]),
   distanceMeters: z.coerce.number().min(0),

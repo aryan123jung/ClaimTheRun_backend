@@ -16,6 +16,7 @@ export class RunService {
 
     const run = await runRepository.createRun({
       userId: new mongoose.Types.ObjectId(userId),
+      title: runData.title?.trim() || undefined,
       routePoints: runData.routePoints,
       territoryPoints: runData.territoryPoints,
       distanceMeters: runData.distanceMeters,
@@ -49,6 +50,7 @@ export class RunService {
     const user = run?.userId;
     return {
       id: run._id.toString(),
+      title: run.title?.toString?.().trim?.() || null,
       distanceMeters: run.distanceMeters ?? 0,
       durationSeconds: run.durationSeconds ?? 0,
       routePoints: Array.isArray(run.routePoints)

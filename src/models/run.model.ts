@@ -19,6 +19,7 @@ const runPointSchema = new Schema(
 export interface IRun extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
+  title?: string;
   routePoints: Array<{
     latitude: number;
     longitude: number;
@@ -40,6 +41,12 @@ const runMongoSchema = new Schema<IRun>(
       ref: "User",
       required: true,
       index: true,
+    },
+    title: {
+      type: String,
+      trim: true,
+      default: null,
+      maxlength: 80,
     },
     routePoints: {
       type: [runPointSchema],
