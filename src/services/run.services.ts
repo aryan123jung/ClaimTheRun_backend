@@ -31,6 +31,16 @@ export class RunService {
     return runs.map((run) => this.serializeRun(run));
   }
 
+  async getRunsByUserId(userId: string) {
+    const user = await userRepository.getUserById(userId);
+    if (!user) {
+      throw new HttpError(404, "User not found");
+    }
+
+    const runs = await runRepository.getRunsByUserId(userId);
+    return runs.map((run) => this.serializeRun(run));
+  }
+
   async getLatestTerritories() {
     const runs = await runRepository.getLatestTerritoryRuns();
     return runs.map((run) => this.serializeRun(run));

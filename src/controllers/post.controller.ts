@@ -68,6 +68,25 @@ export class PostController {
     }
   }
 
+  async getPostsByUserId(req: AuthenticatedRequest, res: Response) {
+    try {
+      const userId = Array.isArray(req.params.userId)
+        ? req.params.userId[0]
+        : req.params.userId;
+      const posts = await postService.getPostsByUserId(userId, req.user?.id);
+      return res.status(200).json({
+        success: true,
+        message: "User posts fetched successfully",
+        data: posts,
+      });
+    } catch (error: Error | any) {
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "Internal Server Error",
+      });
+    }
+  }
+
   async toggleLike(req: AuthenticatedRequest, res: Response) {
     try {
       const postId = Array.isArray(req.params.id)

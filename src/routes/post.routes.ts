@@ -7,6 +7,7 @@ const router = Router();
 const postController = new PostController();
 
 router.get("/me", requireAuth, postController.getMyPosts);
+router.get("/user/:userId", requireAuth, postController.getPostsByUserId);
 router.get("/", requireAuth, postController.getPersonalFeed);
 router.post(
   "/",

@@ -50,6 +50,21 @@ export class RunController {
     }
   }
 
+  async getRunsByUserId(req: AuthenticatedRequest, res: Response) {
+    try {
+      const data = await runService.getRunsByUserId(getParam(req.params.userId));
+      return res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (error: Error | any) {
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "Internal Server Error",
+      });
+    }
+  }
+
   async getLatestTerritories(req: AuthenticatedRequest, res: Response) {
     try {
       const data = await runService.getLatestTerritories();

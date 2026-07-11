@@ -56,6 +56,16 @@ export class PostService {
     return posts.map((post) => this.serializePost(post, userId));
   }
 
+  async getPostsByUserId(targetUserId: string, currentUserId?: string) {
+    const user = await userRepository.getUserById(targetUserId);
+    if (!user) {
+      throw new HttpError(404, "User not found");
+    }
+
+    const posts = await postRepository.getPostsByAuthorId(targetUserId);
+    return posts.map((post) => this.serializePost(post, currentUserId));
+  }
+
   async getCommunityPosts(communityId: string, currentUserId?: string) {
     const community = await communityRepository.getCommunityById(communityId);
     if (!community) {
