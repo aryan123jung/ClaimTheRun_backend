@@ -75,6 +75,7 @@ type GroupVoiceSignalPayload = {
 type GroupRunParticipantPayload = {
   userId: string;
   name: string;
+  username: string;
   avatarUrl?: string | null;
   latitude: number;
   longitude: number;
@@ -85,6 +86,7 @@ type GroupRunJoinPayload = {
   communityId: string;
   userId: string;
   name: string;
+  username: string;
   avatarUrl?: string | null;
   latitude: number;
   longitude: number;
@@ -207,6 +209,7 @@ export function initializeSocket(server: http.Server) {
       const current: GroupRunParticipantPayload = {
         userId,
         name: payload.name?.toString().trim() || "Runner",
+        username: payload.username?.toString().trim() || "runner",
         avatarUrl: payload.avatarUrl?.toString(),
         latitude: payload.latitude,
         longitude: payload.longitude,
