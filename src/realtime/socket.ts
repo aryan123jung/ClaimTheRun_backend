@@ -99,6 +99,12 @@ type GroupRunLocationPayload = {
   longitude: number;
 };
 
+type GroupRunSessionPayload = {
+  communityId: string;
+  startedByUserId: string;
+  startedAt: string;
+};
+
 let io: Server | null = null;
 const groupVoiceParticipants = new Map<
   string,
@@ -108,6 +114,7 @@ const groupRunParticipants = new Map<
   string,
   Map<string, GroupRunParticipantPayload>
 >();
+const groupRunSessions = new Map<string, GroupRunSessionPayload>();
 
 function logGroupVoice(message: string) {
   console.log(`[GroupVoice] ${message}`);
@@ -234,7 +241,9 @@ export function initializeSocket(server: http.Server) {
       socket.emit("group:run:participants", {
         communityId,
         participants: existingParticipants,
+        session: groupRunSessions.get(communityId) ?? null,
       });
+      void emitGroupRunParticipantsSnapshot(communityId);
     });
 
     socket.on("group:run:update", (payload: GroupRunLocationPayload) => {
@@ -270,6 +279,54 @@ export function initializeSocket(server: http.Server) {
       socket.to(`group-run:${communityId}`).emit("group:run:user-updated", {
         communityId,
         participant: updated,
+      });
+    });
+
+    socket.on("group:run:start", (communityId: string) => {
+      if (typeof communityId !== "string" || communityId.trim().length === 0) {
+        return;
+      }
+
+      const trimmedCommunityId = communityId.trim();
+      const participants = groupRunParticipants.get(trimmedCommunityId);
+      if (!participants?.has(userId)) {
+        logGroupRun(
+          `Rejected start community=${trimmedCommunityId} user=${userId} reason=not_joined`,
+        );
+        return;
+      }
+
+      const current =
+        groupRunSessions.get(trimmedCommunityId) ?? {
+          communityId: trimmedCommunityId,
+          startedByUserId: userId,
+          startedAt: new Date().toISOString(),
+        };
+
+      groupRunSessions.set(trimmedCommunityId, current);
+      logGroupRun(
+        `Started community=${trimmedCommunityId} by=${current.startedByUserId} at=${current.startedAt}`,
+      );
+      io?.to(`group-run:${trimmedCommunityId}`).emit("group:run:started", current);
+      void emitGroupRunParticipantsSnapshot(trimmedCommunityId);
+    });
+
+    socket.on("group:run:stop", (communityId: string) => {
+      if (typeof communityId !== "string" || communityId.trim().length === 0) {
+        return;
+      }
+
+      const trimmedCommunityId = communityId.trim();
+      const existing = groupRunSessions.get(trimmedCommunityId);
+      if (existing == null) {
+        return;
+      }
+
+      groupRunSessions.delete(trimmedCommunityId);
+      logGroupRun(`Stopped community=${trimmedCommunityId} by=${userId}`);
+      io?.to(`group-run:${trimmedCommunityId}`).emit("group:run:stopped", {
+        communityId: trimmedCommunityId,
+        stoppedByUserId: userId,
       });
     });
 
@@ -482,6 +539,7 @@ function removeParticipantFromRunRoom(
   participants.delete(userId);
   if (participants.size === 0) {
     groupRunParticipants.delete(communityId);
+    groupRunSessions.delete(communityId);
   } else {
     groupRunParticipants.set(communityId, participants);
   }
@@ -496,6 +554,41 @@ function removeParticipantFromRunRoom(
     communityId,
     userId,
   });
+  void emitGroupRunParticipantsSnapshot(communityId);
+}
+
+async function emitGroupRunParticipantsSnapshot(communityId: string) {
+  if (!io) return;
+
+  const participants = groupRunParticipants.get(communityId);
+  const activeSession = groupRunSessions.get(communityId) ?? null;
+  if (participants == null) {
+    logGroupRun(`Snapshot skipped community=${communityId} no participants`);
+    return;
+  }
+
+  const sockets = await io.in(`group-run:${communityId}`).fetchSockets();
+  logGroupRun(
+    `Snapshot community=${communityId} roomSockets=${sockets.length} participants=[${Array.from(
+      participants.keys(),
+    ).join(", ")}] session=${activeSession?.startedByUserId ?? "none"}`,
+  );
+  for (const socket of sockets) {
+    const socketUserId = socket.data.user?.id?.toString?.() ?? "";
+    const otherParticipants = Array.from(participants.values()).filter(
+      (participant) => participant.userId !== socketUserId,
+    );
+    logGroupRun(
+      `Snapshot -> socketUser=${socketUserId} sees=[${otherParticipants
+        .map((participant) => participant.userId)
+        .join(", ")}]`,
+    );
+    socket.emit("group:run:participants", {
+      communityId,
+      participants: otherParticipants,
+      session: activeSession,
+    });
+  }
 }
 async function emitGroupVoiceParticipantsSnapshot(communityId: string) {
   if (!io) return;
