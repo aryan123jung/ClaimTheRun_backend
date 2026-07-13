@@ -160,6 +160,7 @@ export function initializeSocket(server: http.Server) {
       return;
     }
 
+    console.log(`[CallSocket] connected user=${userId} socket=${socket.id}`);
     socket.join(`user:${userId}`);
 
     socket.on("conversation:join", (conversationId: string) => {
@@ -419,11 +420,17 @@ export function initializeSocket(server: http.Server) {
 
     socket.on("call:invite", (payload: CallInvitePayload) => {
       if (!payload?.receiverId || payload.receiverId === userId) return;
+      console.log(
+        `[CallSocket] call:invite from=${userId} to=${payload.receiverId} callId=${payload.callId} isVideo=${payload.isVideo}`,
+      );
       io?.to(`user:${payload.receiverId}`).emit("call:incoming", payload);
     });
 
     socket.on("call:accept", (payload: { callId: string; callerId: string }) => {
       if (!payload?.callerId) return;
+      console.log(
+        `[CallSocket] call:accept from=${userId} to=${payload.callerId} callId=${payload.callId}`,
+      );
       io?.to(`user:${payload.callerId}`).emit("call:accepted", {
         callId: payload.callId,
         byUserId: userId,
@@ -432,6 +439,9 @@ export function initializeSocket(server: http.Server) {
 
     socket.on("call:decline", (payload: { callId: string; callerId: string }) => {
       if (!payload?.callerId) return;
+      console.log(
+        `[CallSocket] call:decline from=${userId} to=${payload.callerId} callId=${payload.callId}`,
+      );
       io?.to(`user:${payload.callerId}`).emit("call:declined", {
         callId: payload.callId,
         byUserId: userId,
@@ -440,6 +450,9 @@ export function initializeSocket(server: http.Server) {
 
     socket.on("call:end", (payload: { callId: string; otherUserId: string }) => {
       if (!payload?.otherUserId) return;
+      console.log(
+        `[CallSocket] call:end from=${userId} to=${payload.otherUserId} callId=${payload.callId}`,
+      );
       io?.to(`user:${payload.otherUserId}`).emit("call:ended", {
         callId: payload.callId,
         byUserId: userId,
@@ -448,6 +461,9 @@ export function initializeSocket(server: http.Server) {
 
     socket.on("call:signal", (payload: CallSignalPayload) => {
       if (!payload?.toUserId) return;
+      console.log(
+        `[CallSocket] call:signal from=${userId} to=${payload.toUserId} callId=${payload.callId} type=${payload.data?.type?.toString?.() ?? "unknown"}`,
+      );
       io?.to(`user:${payload.toUserId}`).emit("call:signal", payload);
     });
 
